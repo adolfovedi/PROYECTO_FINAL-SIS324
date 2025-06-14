@@ -10,6 +10,7 @@
     "lint": "eslint src --ext .ts,.tsx,.js,.jsx --fix"
   },
   "dependencies": {
+    "firebase": "^11.9.1",
     "js-cookie": "3.0.5",
     "jsonwebtoken": "9.0.2",
     "next": "15.0.3",

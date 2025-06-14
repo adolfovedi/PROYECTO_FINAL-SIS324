@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import cartUtils from "@/utils/cartUtils"; // Asegúrate de que esta importación sea correcta
+import type { Product } from "@/utils/cartUtils"; // Importa la interfaz Product de cartUtils
 
-// Interfaz para el tipo de libro
+// Interfaz para el tipo de libro (se mantiene igual aquí)
 interface Book {
   id: number;
   title: string;
@@ -14,6 +16,8 @@ interface Book {
   category: string;
   imageUrl: string;
 }
+
+// NO NECESITAS la interfaz CartItem aquí si ya manejas Product en cartUtils
 
 // Datos de libros (normalmente vendrían de una API)
 const booksData: Book[] = [
@@ -71,7 +75,7 @@ const booksData: Book[] = [
     "id": 6,
     "title": "Atomic Habits",
     "author": "James Clear",
-    "description": "Métodos probados para crear buenos hábitos y eliminar los malos. Una guía práctica para mejorar tu vida mediante pequeños cambios consistentes.",
+    "description": "Métodos probados para crear buenos hábitos y eliminar los malos. Una guía práctica para mejorar tu vida mediante pequeños cambios consistentess.",
     "price": 16.99,
     "stock": 35,
     "category": "5",
@@ -186,32 +190,25 @@ const categoryNames: { [key: string]: string } = {
 export default function BookDetailsPage() {
   const params = useParams();
   const router = useRouter();
-  
-  // Obtener el ID desde los parámetros dinámicos de la URL
+
   const bookId = params.id as string;
   const currentBookId = bookId ? parseInt(bookId, 10) : 1;
-  
-  // Estados del componente
+
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
 
-  // Función para buscar libro por ID
   const findBookById = (id: number): Book | null => {
     return booksData.find(book => book.id === id) || null;
   };
 
-  // Efecto para cargar los datos del libro
   useEffect(() => {
     const fetchBook = async () => {
       try {
         setLoading(true);
-        
-        // Simular delay de carga
         await new Promise(resolve => setTimeout(resolve, 500));
-        
         const foundBook = findBookById(currentBookId);
-        
         if (foundBook) {
           setBook(foundBook);
           setError(null);
@@ -224,23 +221,55 @@ export default function BookDetailsPage() {
         setLoading(false);
       }
     };
-
     if (!isNaN(currentBookId)) {
       fetchBook();
     }
   }, [currentBookId]);
 
-  // Función para manejar la navegación
   const handleNavigation = (path: string) => {
     router.push(path);
   };
 
-  // Función para cambiar de libro (para demostración)
+  const handleLoginToBuy = () => {
+    router.push('/login');
+  };
+
+  // **Función para agregar el libro al carrito - ¡ACTUALIZADA!**
+  const handleAddToCart = (bookToAdd: Book) => {
+    if (bookToAdd.stock === 0) {
+      setNotification('¡Este libro está agotado!');
+      setTimeout(() => setNotification(null), 3000);
+      return;
+    }
+
+    try {
+      // *** ESTE ES EL CAMBIO CRUCIAL ***
+      // Creamos un objeto 'Product' que coincide con la interfaz de cartUtils.ts
+      const productToSave: Product = {
+        id: bookToAdd.id,
+        title: bookToAdd.title, // Mapeamos el 'title' del Book al 'title' del Product
+        price: bookToAdd.price,
+        imageUrl: bookToAdd.imageUrl, // Mapeamos el 'imageUrl' del Book al 'imageUrl' del Product
+        // 'quantity' se manejará automáticamente por cartUtils.addToCart
+      };
+
+      // Llamamos a la función addToCart de cartUtils, pasándole el objeto Product
+      cartUtils.addToCart(productToSave);
+
+      setNotification(`"${bookToAdd.title}" se agregó al carrito.`);
+      setTimeout(() => setNotification(null), 3000);
+
+    } catch (e) {
+      console.error("Error al manejar el carrito:", e);
+      setNotification("Error al agregar al carrito. Intenta de nuevo.");
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
   const handleBookChange = (bookId: number) => {
     router.push(`/books/${bookId}`);
   };
 
-  // Estados de carga
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-yellow-400 to-amber-600 flex justify-center items-center">
@@ -282,30 +311,38 @@ export default function BookDetailsPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Navigation Menu */}
           <nav className="mt-4">
             <div className="flex justify-center space-x-12">
-              <button 
+              <button
                 onClick={() => handleNavigation('/')}
                 className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 cursor-pointer transition duration-200 bg-transparent border-none"
               >
                 <span className="text-xl">🏠</span>
                 <span className="font-medium">Inicio</span>
               </button>
-              <button 
+              <button
                 onClick={() => handleNavigation('/productos')}
                 className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 cursor-pointer transition duration-200 bg-transparent border-none"
               >
                 <span className="text-xl">🛍️</span>
                 <span className="font-medium">Productos</span>
               </button>
-              <button 
+              <button
                 onClick={() => handleNavigation('/recomendados')}
                 className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 cursor-pointer transition duration-200 bg-transparent border-none"
               >
                 <span className="text-xl">✅</span>
                 <span className="font-medium">Recomendados</span>
+              </button>
+              {/* Botón para Carrito de Compras */}
+              <button
+                onClick={() => handleNavigation('/ShopingCart')} // Enlace al carrito (ajustado a /ShopingCart)
+                className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 cursor-pointer transition duration-200 bg-transparent border-none"
+              >
+                <span className="text-xl">🛒</span>
+                <span className="font-medium">Carrito de compras</span>
               </button>
               <button className="bg-blue-600 text-white px-6 py-2 rounded-full font-medium hover:bg-blue-700 transition duration-200">
                 Iniciar Sesión
@@ -339,9 +376,16 @@ export default function BookDetailsPage() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
+        {/* Notificación */}
+        {notification && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-bounce">
+            {notification}
+          </div>
+        )}
+
         {/* Botón para volver atrás */}
         <div className="mb-8">
-          <button 
+          <button
             onClick={() => router.back()}
             className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 cursor-pointer transition duration-200 bg-white px-4 py-2 rounded-lg shadow-md hover:shadow-lg"
           >
@@ -358,9 +402,10 @@ export default function BookDetailsPage() {
               <div className="w-64 h-80 bg-gradient-to-br from-blue-600 to-purple-700 rounded-lg shadow-2xl flex items-center justify-center overflow-hidden">
                 {book.imageUrl ? ( // Si existe una URL de imagen para el libro
                   <img
-                    src={book.imageUrl} // Usa la URL de la imagen del libro
-                    alt={`Portada de ${book.title}`} // Texto alternativo para accesibilidad
-                    className="w-full h-full object-cover rounded-lg" // Asegura que la imagen se adapte y cubra el contenedor
+                        src={book.imageUrl} // Usa la URL de la imagen del libro
+                        alt={`Portada de ${book.title}`} // Texto alternativo para accesibilidad
+                        className="w-full h-full object-cover rounded-lg" // Asegura que la imagen se adapte y cubra el contenedor
+                        onError={(e) => { e.currentTarget.src = `https://placehold.co/256x320/CCCCCC/FFFFFF?text=BOOK`; }} // Fallback for image errors
                   />
                 ) : (
                   // Si no hay imageUrl, muestra el icono de libro genérico
@@ -373,27 +418,27 @@ export default function BookDetailsPage() {
                 )}
               </div>
             </div>
-            
+
             {/* Book Details */}
             <div className="text-left space-y-6 max-w-2xl">
               <h1 className="text-4xl lg:text-6xl font-bold text-gray-800">
                 {book.title}
               </h1>
-              
+
               <p className="text-xl lg:text-2xl text-gray-700 font-medium">
                 {book.author}
               </p>
-              
+
               <p className="text-base lg:text-lg text-gray-700 leading-relaxed">
                 {book.description}
               </p>
-              
+
               <div className="space-y-2">
                 <div className="text-lg text-gray-700">
                   <span className="font-medium">Categoría: </span>
                   <span>{categoryNames[book.category] || 'General'}</span>
                 </div>
-                
+
                 <div className="text-lg text-gray-700">
                   <span className="font-medium">Stock disponible: </span>
                   <span className={book.stock > 10 ? 'text-green-600' : book.stock > 0 ? 'text-orange-600' : 'text-red-600'}>
@@ -401,13 +446,14 @@ export default function BookDetailsPage() {
                   </span>
                 </div>
               </div>
-              
+
               <div className="text-3xl font-bold text-gray-800">
                 Bs. {book.price.toFixed(2)}
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-4">
-                <button 
+                <button
+                  onClick={handleLoginToBuy}
                   className={`px-8 py-3 rounded-lg font-medium text-lg transition duration-200 shadow-lg ${
                     book.stock > 0
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
@@ -417,9 +463,18 @@ export default function BookDetailsPage() {
                 >
                   {book.stock > 0 ? 'Iniciar sesión para comprar' : 'Producto agotado'}
                 </button>
-                
-                <button className="bg-amber-600 text-white px-8 py-3 rounded-lg font-medium text-lg hover:bg-amber-700 transition duration-200 shadow-lg">
-                  Agregar a favoritos
+
+                {/* Nuevo botón para agregar al carrito */}
+                <button
+                  onClick={() => handleAddToCart(book)} // Llama a la función para agregar al carrito
+                  className={`px-8 py-3 rounded-lg font-medium text-lg transition duration-200 shadow-lg ${
+                    book.stock > 0
+                      ? 'bg-amber-600 text-white hover:bg-amber-700'
+                      : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  }`}
+                  disabled={book.stock === 0}
+                >
+                  {book.stock > 0 ? 'Agregar al carrito' : 'Sin stock para carrito'}
                 </button>
               </div>
             </div>
@@ -455,7 +510,7 @@ export default function BookDetailsPage() {
               <h3 className="text-lg font-bold mb-3 text-white">Enlaces Rápidos</h3>
               <div className="space-y-1 text-sm">
                 <p>
-                  <button 
+                  <button
                     onClick={() => handleNavigation('/')}
                     className="hover:underline text-white cursor-pointer transition duration-200 bg-transparent border-none p-0 text-left"
                   >
@@ -463,7 +518,7 @@ export default function BookDetailsPage() {
                   </button>
                 </p>
                 <p>
-                  <button 
+                  <button
                     onClick={() => handleNavigation('/productos')}
                     className="hover:underline text-white cursor-pointer transition duration-200 bg-transparent border-none p-0 text-left"
                   >
@@ -471,7 +526,7 @@ export default function BookDetailsPage() {
                   </button>
                 </p>
                 <p>
-                  <button 
+                  <button
                     onClick={() => handleNavigation('/recomendados')}
                     className="hover:underline text-white cursor-pointer transition duration-200 bg-transparent border-none p-0 text-left"
                   >
@@ -485,19 +540,19 @@ export default function BookDetailsPage() {
             <div>
               <h3 className="text-lg font-bold mb-3 text-white">Síguenos</h3>
               <div className="flex space-x-3">
-                <button 
+                <button
                   onClick={() => window.open('https://facebook.com', '_blank')}
                   className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center hover:bg-blue-700 transition duration-200 text-white font-bold text-sm cursor-pointer"
                 >
                   f
                 </button>
-                <button 
+                <button
                   onClick={() => window.open('https://twitter.com', '_blank')}
                   className="w-8 h-8 bg-blue-400 rounded-full flex items-center justify-center hover:bg-blue-500 transition duration-200 text-white font-bold text-sm cursor-pointer"
                 >
                   t
                 </button>
-                <button 
+                <button
                   onClick={() => window.open('https://instagram.com', '_blank')}
                   className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center hover:from-purple-600 hover:to-pink-600 transition duration-200 text-white font-bold text-xs cursor-pointer"
                 >
@@ -506,7 +561,7 @@ export default function BookDetailsPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="border-t border-amber-500 mt-6 pt-4 text-center">
             <p className="text-sm">&copy; 2025 Tu Tienda de Libros. Todos los derechos reservados.</p>
           </div>

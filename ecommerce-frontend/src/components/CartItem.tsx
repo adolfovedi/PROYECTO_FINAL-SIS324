@@ -1,103 +1,86 @@
-import React, { useState } from "react";
-import DolarIcon from "@/assets/icons/dolarIcon";
-import BasuraIcon from "@/assets/icons/basuraIcon";
-import AddProduct from "@/assets/icons/addProduct";
-import cartUtils from "@/utils/cartUtils";
-import buyBook from "@/app/api/comprar";
-import Cookies from "js-cookie";
-import decodeJWT from "@/utils/extractInformationUser";
+'use client';
 
+import React from "react";
+import DolarIcon from "@/assets/icons/dolarIcon"; 
+import BasuraIcon from "@/assets/icons/basuraIcon"; 
+import AddProduct from "@/assets/icons/addProduct"; 
+
+// Interfaz para las props del componente CartItem
 interface CartItemProps {
-	id: number;
-	quantity: number;
-	title: string;
-	price: number;
-	onRemove: (id: number) => void;
+    id: number;
+    quantity: number;
+    title: string; // El nombre del artículo
+    price: number; // El precio unitario del artículo
+    imageUrl?: string; // Opcional: la URL de la imagen del libro
+    onRemove: (id: number) => void; // Para eliminar un ítem completamente
+    onDecrease: (id: number) => void; // Para decrementar la cantidad
+    onAdd: (id: number) => void; // Para incrementar la cantidad
 }
+
 const CartItem: React.FC<CartItemProps> = ({
-	id,
-	quantity,
-	title,
-	price,
-	onRemove,
+    id,
+    quantity,
+    title,
+    price,
+    imageUrl, // Recibimos la URL de la imagen
+    onRemove, // Función para eliminar (decrementa o quita)
+    onDecrease, // Para decrementar la cantidad
+    onAdd, // Para incrementar la cantidad
 }) => {
-	const id_book = id;
-	const [itemQuantity, setItemQuantity] = useState(quantity);
+    // Las operaciones de cartUtils y la compra se manejan en el componente padre (ShopingCart.tsx)
+    // Este componente solo se encarga de la UI y de notificar al padre.
+    // Ya no hay estado 'itemQuantity' local aquí, se usa la 'quantity' que viene de props.
 
-	const handleDelete = () => {
-		cartUtils.removeFromCart(id);
-		const updatedQuantity = itemQuantity - 1;
+    const itemTotalPrice = (quantity * price).toFixed(2);
 
-		if (updatedQuantity > 0) {
-			setItemQuantity(updatedQuantity);
-		} else {
-			setItemQuantity(0);
-			onRemove(id);
-		}
-	};
-
-	const handleDeleteAll = () => {
-		cartUtils.removeFromCart(id);
-		setItemQuantity(0);
-		onRemove(id);
-	};
-
-	const handleAdd = () => {
-		cartUtils.addToCart({ id, name: title, price });
-		setItemQuantity(itemQuantity + 1);
-	};
-
-	const token = Cookies.get("token")?.toString();
-	const id_user = token ? parseInt(decodeJWT(token).id.toString()) : 0;
-
-	const handlebuyBook = (
-		IdUser: number,
-		IdBook: number,
-		quantity: number,
-		Total: number
-	) => {
-		try {
-			buyBook(IdUser, IdBook, quantity, Total);
-		} catch (error) {
-			console.log(error);
-		}
-	};
-	return (
-		<div className="justify-items-center place-items-center grid grid-cols-[.5fr,3fr,1fr,1fr]">
-			<div>{itemQuantity}</div>
-			<div>{title}</div>
-			<div className=" my-2 flex flex-row">
-				<div
-					className="mx-1 p-1 rounded-full bg-yellow-400 hover:bg-yellow-600 hover:scale-110"
-					onClick={() => {
-						handleDeleteAll();
-						handlebuyBook(
-							id_user,
-							id_book,
-							itemQuantity,
-							itemQuantity * price
-						);
-						window.location.href = "/payment";
-					}}
-				>
-					<DolarIcon className="w-7" />
-				</div>
-				<div
-					className="mx-1 p-1 rounded-full bg-red-600 hover:bg-red-500 hover:scale-110"
-					onClick={handleDelete}
-				>
-					<BasuraIcon className="w-7" />
-				</div>
-				<div
-					className="rounded-full bg-green-600 hover:bg-green-400 hover:scale-110"
-					onClick={handleAdd}
-				>
-					<AddProduct className="w-9" />
-				</div>
-			</div>
-			<div>{Math.round(itemQuantity * price * 100) / 100 || 0}</div>
-		</div>
-	);
+    return (
+        <div className="justify-items-center place-items-center grid grid-cols-[.5fr,3fr,1fr,1fr] py-3 border-b border-gray-200 text-gray-800">
+            <div>{quantity}</div>
+            <div className="flex items-center space-x-4">
+                <img
+                    src={imageUrl || `https://placehold.co/50x70/E0E0E0/333333?text=Libro`} // Muestra la imagen o un placeholder
+                    alt={`Portada de ${title}`}
+                    className="w-12 h-16 object-cover rounded-md shadow-sm"
+                    onError={(e) => { e.currentTarget.src = `https://placehold.co/50x70/E0E0E0/333333?text=Libro`; }}
+                />
+                <p className="font-semibold text-base">{title}</p> {/* Aquí se muestra el título */}
+            </div>
+            <div className=" my-2 flex flex-row space-x-2"> 
+                {/* Botón para Comprar (individualmente o por cantidad) */}
+                {/* NOTA: La lógica de compra individual debería estar en el padre (ShopingCart.tsx)
+                   y ser pasada como prop o manejada centralmente. Aquí solo simulamos. */}
+                <div
+                    className="p-1 rounded-full bg-yellow-400 hover:bg-yellow-600 hover:scale-110 cursor-pointer"
+                    onClick={() => {
+                        alert(`Simulando compra de ${quantity} unidad(es) de "${title}" por Bs. ${itemTotalPrice}`);
+                        // Aquí deberías notificar al padre para que gestione la compra individual y la eliminación
+                        onRemove(id); // Asume que la compra de este ítem implica eliminarlo del carrito
+                    }}
+                >
+                    <DolarIcon className="w-7" />
+                </div>
+                {/* Botón para Decrementar la cantidad */}
+                <div
+                    className="p-1 rounded-full bg-red-600 hover:bg-red-500 hover:scale-110 cursor-pointer"
+                    // Llama a la función onDecrease que viene de las props (del padre)
+                    onClick={() => onDecrease(id)} 
+                >
+                    {/* Usamos BasuraIcon para "decrementar/eliminar uno", si quantity > 1, decrementa. Si quantity == 1, elimina.
+                       La lógica de decisión la maneja el padre. */}
+                    <BasuraIcon className="w-7" /> 
+                </div>
+                {/* Botón para Incrementar la cantidad */}
+                <div
+                    className="p-1 rounded-full bg-green-600 hover:bg-green-400 hover:scale-110 cursor-pointer"
+                    // Llama a la función onAdd que viene de las props (del padre)
+                    onClick={() => onAdd(id)} 
+                >
+                    <AddProduct className="w-9" />
+                </div>
+            </div>
+            <div className="font-bold text-right pr-6">Bs. {itemTotalPrice}</div> {/* Aquí se muestra el precio total por ítem */}
+        </div>
+    );
 };
 
 export default CartItem;
